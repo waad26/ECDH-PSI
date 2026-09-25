@@ -1,24 +1,22 @@
-import hashlib # For hashing and commitments
-import math # For Bloom filter size calculations
-import secrets # For secure random number generation
-import time # For measuring execution time
-from dataclasses import dataclass # For structured party representation
+import hashlib
+import math
+import secrets
+from dataclasses import dataclass
 from typing import Dict, Iterable, List, Set, Tuple
+import time 
 
-# ECDSA library for elliptic curve operations
 from ecdsa import NIST256p
 from ecdsa.ellipticcurve import Point
 
 
-# Parameters
+
 CURVE = NIST256p.curve
 G = NIST256p.generator
 n = NIST256p.order  
-HASH_NAME = "sha384" 
+HASH_NAME = "sha256" 
 
 
-
-# Utility functions for hashing, point encoding, and key generation
+# Utility functions
 def hash_bytes(data: bytes) -> bytes:
     """Return digest bytes using the selected hash."""
     h = hashlib.new(HASH_NAME)
@@ -64,7 +62,7 @@ def random_private_key() -> int:
     return secrets.randbelow(n - 1) + 1
 
 
-# Bloom Filter Implementation
+# Simple Bloom Filter
 class BloomFilter:
     def __init__(self, size: int, num_hashes: int) -> None:
         self.size = size
@@ -87,7 +85,6 @@ class BloomFilter:
     def __contains__(self, item: str) -> bool:
         return all(self.bits[pos] == 1 for pos in self._positions(item))
 
-# Build Bloom filter from items with calculated size and hash count based on desired false positive rate.
 def build_bloom_filter(items: Iterable[str], false_positive_rate: float = 0.01) -> BloomFilter:
     items = list(items)
     items_count = max(len(items), 1)
@@ -101,7 +98,7 @@ def build_bloom_filter(items: Iterable[str], false_positive_rate: float = 0.01) 
     return bloom
 
 
-# Party model
+# Party model 
 @dataclass
 class Party:
     name: str
@@ -114,9 +111,8 @@ class Party:
         k_blind = k + r * n
         r is a random value > 128 bits (As justified by Schindler & Wiemers)
         """
-        r = secrets.randbits(130)
+        r = secrets.randbits(130) 
         return self.private_key + (r * n)
-        
 
     def first_computation(self, items: Iterable[str]) -> Dict[str, Point]:
         """
@@ -233,8 +229,6 @@ def ecdh_psi_protocol(set_a: Set[str], set_b: Set[str]) -> Tuple[Set[str], Dict[
 
 # Example run
 if __name__ == "__main__":
-    
-    # Sample datasets for A and B with some overlap and some unique items.
     S_A = {
         "Waad", "Fahad", "Noura", "Badr", "Amal", "Hanaa", "Adel", "George", 
         "Reem", "Jihan", "Layal", "Salman", "Haneen", "Khalid", "Sara", 
@@ -245,9 +239,8 @@ if __name__ == "__main__":
         "Sarah", "Banan", "Tariq", "Saud", "Nayef", "Ziyad", "Thamer", "Yasser", 
         "Saleh", "Hussain", "Turki", "Talal", "Sami", "Wael", "Qusai", "Hatem", 
         "Bassam", "Firas", "Raed", "Moath", "Muhannad", "Nader", "Osama", "Waleed", 
-        "Abeer", "Afnan", "Ahlam", "Alyaa", "Amani", "Amina", 
-        "Anfal", "Areej", "Asalah", "Atheer", "Azizah", "Dania", "Dina", "Eman","Fadwa",
-          "Faten", "Ghada", "Hala", "Hanan", "Hind", "Huda"
+        "Abeer", "Afnan", "Ahlam", "Alaa", "Amani", "Amina", 
+        "Anfal", "Areej", "Asalah", "Atheer", "Azizah", "Dania", "Dina", "Eman","Fadwa", "Faten", "Ghada", "Hala", "Hanan", "Hind", "Huda"
     }
 
     S_B = {
@@ -265,26 +258,25 @@ if __name__ == "__main__":
         "Younis", "Idris", "Ayoub", "Yaqoub", "Issa", "Mousa", "Haroun", 
         "Sulaiman", "Dawoud", "Zakariya", "Yahya", "Ayman", "Amjad", "Anwar", 
         "Akram", "Ashraf", "Adham", "Iyad", "Bahaa", "Taj", "Jalal", "Jamal", 
-        "Husam", "Hazem", "Diya", "Rabea", "Zahir", "Siraj", "Shafiq", "Safwan","Rakan",
-          "Rayan", "Nawaf","Feras", "Fahd"
+        "Husam", "Hazem", "Diya", "Rabea", "Zahir", "Siraj", "Shafiq", "Safwan","Rakan", "Rayan", "Nawaf","Feras", "Fahd"
     }
 
     # Measure execution time
     start_time = time.time()
-    intersection, info = ecdh_psi_protocol(S_A, S_B)
     end_time = time.time()
     execution_time = end_time - start_time
+    intersection, info = ecdh_psi_protocol(S_A, S_B)
 
-    # Output results and debug info
-    print("=== ECDH-PSI Result ===")
+    print("ECDH-PSI Result:")
     print("Intersection:", intersection)
-    print("\n=== Protocol Flow Info ===")
+    print("\nProtocol Flow Info:")
     print(f"Curve used: {info['curve']}")
     print(f"Hash used: {info['hash']}")
     print(f"A's Original Dataset size: {len(info['S_A'])}")
     print(f"B's Original Dataset size: {len(info['S_B'])}")
     print(f"B's Dataset size AFTER Bloom Filter: {len(info['S_B_filtered'])}")
     print(f"Side-Channel Protection: Active (Scalar Blinding > 128 bits)")
+
     # Calculate Bloom filter reduction and false positives
     reduction = (1 - len(info['S_B_filtered']) / len(info['S_B'])) * 100
     print(f"Bloom Filter Reduction: {reduction:.2f}%")
@@ -292,7 +284,3 @@ if __name__ == "__main__":
     false_positives = len(info['S_B_filtered']) - len(intersection)
     print(f"False Positives: {false_positives}")
     print(f"Execution Time: {execution_time:.4f} seconds")
-
-
-    
-
